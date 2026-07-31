@@ -114,13 +114,14 @@
 <main>
   <div class="eyebrow">Panic Button · Darurat</div>
   <h1 id="mainHeading">Tekan. Kamu<br>terlindungi.</h1>
-  <p class="sub" id="mainSub">Sekali tekan: lokasi realtime terkirim, rekaman suara otomatis tersimpan, dan alarm keras aktif bila tak dimatikan dalam 30 menit.</p>
+  <p class="sub" id="mainSub">Sekali tekan: lokasi realtime terkirim, rekaman suara otomatis tersimpan, dan alarm keras aktif bila tak dimatikan dalam <span id="mainSubDuration">30 menit</span>.</p>
 
   <div class="sos-wrap">
     <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
     <button id="panicBtn">PANIC<span class="sub-label">TEKAN DI SINI</span></button>
   </div>
   <p class="hint" id="hintText">Atur passcode dan kontak dulu di bawah sebelum darurat terjadi</p>
+  <button class="btn btn-outline" id="editSetupBtn" style="max-width:280px;margin-top:10px;">⚙ Edit Kontak & Passcode</button>
 
   <!-- DIAGNOSTIK SISTEM - OTOMATIS CEK MASALAH ENVIRONMENT -->
   <div class="panel" id="diagnosticPanel" style="border-color:var(--amber);">
@@ -129,6 +130,8 @@
     <div class="live-row"><span>Izin lokasi (GPS)</span><span id="diagGps">Mengecek…</span></div>
     <div class="live-row"><span>Izin mikrofon</span><span id="diagMic">Mengecek…</span></div>
     <p class="note" id="diagAdvice"></p>
+    <button class="btn btn-outline" id="requestGpsBtn" style="margin-top:10px;border-color:var(--green);color:var(--green);">📍 Minta Izin Lokasi Sekarang</button>
+    <p class="note">Kalau saat diminta kamu pilih "While Using the App" / "Allow", browser TIDAK akan minta izin lagi di kunjungan berikutnya. Kalau pilih "Allow Once", izin akan diminta ulang tiap buka halaman baru.</p>
   </div>
 
   <!-- SETUP PASSCODE -->
@@ -179,6 +182,7 @@
     <div class="live-row"><span>LOKASI TERAKHIR</span><span id="liveTime">—</span></div>
     <div class="live-coords" id="liveCoords">Mencari GPS…</div>
     <div class="live-row" style="margin-top:8px"><span><span class="rec-dot"></span>REKAM AUDIO</span><span id="recStatus">Aktif</span></div>
+    <div id="recordingsList" style="margin-top:6px;"></div>
     <div class="timer-big" id="countdownTimer">30:00</div>
     <div class="live-row"><span>UPDATE KE-</span><span id="pingCount">0</span></div>
     <div class="log-list" id="activityLog"></div>
@@ -300,6 +304,29 @@ async function runDiagnostics(){
 }
 runDiagnostics();
 
+el('requestGpsBtn').addEventListener('click', () => {
+  if(!navigator.geolocation){
+    showToast('Perangkat/browser tidak mendukung GPS');
+    return;
+  }
+  showToast('Meminta izin lokasi… tunggu popup dari iOS');
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      showToast(`✓ Izin diberikan. Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)}`, 5000);
+      runDiagnostics();
+    },
+    (err) => {
+      let msg = 'Gagal: ';
+      if(err.code === 1) msg += 'Izin ditolak. Cek Settings > Privacy > Location Services > Safari.';
+      else if(err.code === 2) msg += 'Posisi tidak tersedia, coba di luar ruangan.';
+      else msg += 'Waktu habis, coba lagi.';
+      showToast(msg, 5000);
+      runDiagnostics();
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+});
+
 /* ================= HASHING SEDERHANA (SHA-256 via SubtleCrypto) ================= */
 async function hashText(text){
   const enc = new TextEncoder().encode(text);
@@ -308,6 +335,13 @@ async function hashText(text){
 }
 
 /* ================= SETUP PASSCODE ================= */
+el('editSetupBtn').addEventListener('click', () => {
+  el('passcodePanel').classList.remove('hidden');
+  el('contactPanel').classList.remove('hidden');
+  el('passcodePanel').scrollIntoView({behavior:'smooth'});
+  showToast('Panel edit dibuka. Kontak lama tetap tersimpan, tinggal ubah.');
+});
+
 el('savePasscodeBtn').addEventListener('click', async () => {
   const p1 = el('passcodeInput').value.trim();
   const p2 = el('passcodeConfirm').value.trim();
@@ -364,7 +398,17 @@ el('addContactBtn').addEventListener('click', () => {
 });
 
 el('notifyPoliceCheck').addEventListener('change', saveSetupToStorage);
-el('alarmDurationSelect').addEventListener('change', saveSetupToStorage);
+el('alarmDurationSelect').addEventListener('change', () => {
+  saveSetupToStorage();
+  updateMainSubDuration();
+});
+
+function updateMainSubDuration(){
+  const val = parseFloat(el('alarmDurationSelect').value) || 30;
+  const label = val < 1 ? `${Math.round(val*60)} detik` : `${val} menit`;
+  const elm = el('mainSubDuration');
+  if(elm) elm.textContent = label;
+}
 
 function getValidContacts(){
   return contacts.map(c => normalizePhoneNumber(c)).filter(c => c.length >= 9);
@@ -438,6 +482,7 @@ function loadSetupFromStorage(){
     const savedDuration = localStorage.getItem('jagajabar_alarmDuration');
     if(savedDuration){
       el('alarmDurationSelect').value = savedDuration;
+      updateMainSubDuration();
     }
     if(savedHash && getValidContacts().length > 0){
       el('hintText').textContent = 'Siap. Tekan tombol jika dalam bahaya';
@@ -476,16 +521,47 @@ function activatePanic(validContacts){
 
   addLog('Panic diaktifkan — mengirim secepat mungkin');
 
-  // LANGKAH 1 (tercepat, <1 detik): kirim WA/SMS/telepon SEGERA dengan info "lokasi menyusul"
-  // supaya kontak darurat tahu ada bahaya walau GPS belum sempat dapat titik
+  // LANGKAH 1: minta izin GPS DULUAN, sendirian, sebelum ada popup lain yang bisa menutupinya
+  requestLocationPermissionFirst(validContacts);
+}
+
+/* ================= MINTA IZIN GPS DULU, BARU LANJUT KE CHANNEL LAIN ================= */
+function requestLocationPermissionFirst(validContacts){
+  if(!navigator.geolocation){
+    addLog('Perangkat tidak mendukung GPS, lanjut tanpa lokasi');
+    proceedAfterLocationPrompt(validContacts);
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      lastCoords = {
+        lat: pos.coords.latitude.toFixed(6),
+        lng: pos.coords.longitude.toFixed(6),
+        acc: Math.round(pos.coords.accuracy)
+      };
+      el('liveCoords').textContent = `${lastCoords.lat}, ${lastCoords.lng}`;
+      el('liveTime').textContent = new Date().toLocaleTimeString('id-ID');
+      addLog(`Izin GPS diberikan, koordinat didapat (±${lastCoords.acc}m)`);
+      proceedAfterLocationPrompt(validContacts);
+    },
+    (err) => {
+      addLog('Izin GPS: ' + (err.code === 1 ? 'ditolak pengguna' : 'gagal — ' + err.message));
+      proceedAfterLocationPrompt(validContacts);
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+function proceedAfterLocationPrompt(validContacts){
+  // LANGKAH 2: baru sekarang buka WA/SMS/telepon (popup GPS sudah selesai diproses)
   fireAllChannelsImmediately(validContacts);
 
-  // LANGKAH 2 (paralel, 1-3 detik biasanya): ambil posisi CEPAT (akurasi rendah dulu)
-  // begitu dapat, langsung kirim ulang pesan dengan koordinat asli
-  getQuickLocationThenSend(validContacts);
-  setTimeout(runDiagnostics, 1500); // refresh status izin setelah browser sempat minta izin
+  // LANGKAH 3: kalau lastCoords belum ada dari langkah 1, coba lagi cepat
+  if(!lastCoords) getQuickLocationThenSend(validContacts);
+  setTimeout(runDiagnostics, 1000);
 
-  // LANGKAH 3: mulai tracking berkelanjutan presisi tinggi untuk update selanjutnya
+  // LANGKAH 4: mulai tracking berkelanjutan presisi tinggi untuk update selanjutnya
   startLocationTracking(validContacts);
   startAudioRecording();
   startCountdown(validContacts);
@@ -630,18 +706,33 @@ function stopAudioRecording(){
   el('recStatus').textContent = 'Nonaktif';
 }
 
+let savedRecordings = []; // simpan referensi blob di memori untuk didownload nanti
+
 async function saveRecordingLocally(blob){
   try{
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result;
-      const key = `jagajabar-audio-${sessionStartId}-${Date.now()}`;
-      // simpan hanya metadata + catatan, blob besar tidak cocok disimpan penuh di key-value store
-      await window.storage.set(key, JSON.stringify({ time: new Date().toISOString(), sizeKB: Math.round(blob.size/1024) }));
-    };
-    reader.readAsDataURL(blob);
-    addLog(`Segmen rekaman tersimpan (${Math.round(blob.size/1024)} KB)`);
-  }catch(e){ /* optional */ }
+    const url = URL.createObjectURL(blob);
+    const timeLabel = new Date().toLocaleString('id-ID');
+    const sizeKB = Math.round(blob.size/1024);
+    savedRecordings.push({ url, time: timeLabel, sizeKB, blob });
+
+    // catat metadata ke storage supaya ada jejak riwayat
+    const key = `jagajabar-audio-${sessionStartId}-${Date.now()}`;
+    await window.storage.set(key, JSON.stringify({ time: new Date().toISOString(), sizeKB })).catch(()=>{});
+
+    addLog(`Segmen rekaman tersimpan (${sizeKB} KB) — tersedia untuk diunduh`);
+    renderRecordingsList();
+  }catch(e){ addLog('Gagal menyimpan segmen rekaman'); }
+}
+
+function renderRecordingsList(){
+  const container = el('recordingsList');
+  if(!container) return;
+  if(savedRecordings.length === 0){ container.innerHTML = ''; return; }
+  container.innerHTML = savedRecordings.map((rec, i) => `
+    <a href="${rec.url}" download="jagajabar-rekaman-${i+1}.webm" style="display:flex;justify-content:space-between;color:var(--green);text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 0;border-bottom:1px solid var(--line);">
+      <span>🎙 Segmen ${i+1} — ${rec.time}</span><span>${rec.sizeKB} KB ⬇</span>
+    </a>
+  `).join('');
 }
 
 /* ================= SMS & TELEPON OTOMATIS ================= */
@@ -736,10 +827,11 @@ el('testAlarmStandaloneBtn').addEventListener('click', async () => {
 /* ================= ALARM SETELAH 30 MENIT ================= */
 function triggerAlarm(validContacts){
   alarmTriggered = true;
-  addLog('⚠ 30 menit terlampaui — ALARM DIAKTIFKAN');
+  addLog(`⚠ ${el('alarmDurationLabel').textContent} terlampaui — ALARM DIAKTIFKAN`);
 
   // notifikasi ke kontak darurat
-  const msg = `🚨🚨 ALARM JAGAJABAR BERBUNYI 🚨🚨\nAlarm belum dimatikan dalam 30 menit. Ini indikasi bahaya serius.\nLokasi terakhir: https://maps.google.com/?q=${lastCoords ? lastCoords.lat+','+lastCoords.lng : 'tidak tersedia'}\nSegera hubungi 110/112 dan cari orang tersebut.`;
+  const durationLabel = el('alarmDurationLabel').textContent || '30 menit';
+  const msg = `🚨🚨 ALARM JAGAJABAR BERBUNYI 🚨🚨\nAlarm belum dimatikan dalam ${durationLabel}. Ini indikasi bahaya serius.\nLokasi terakhir: https://maps.google.com/?q=${lastCoords ? lastCoords.lat+','+lastCoords.lng : 'tidak tersedia'}\nSegera hubungi 110/112 dan cari orang tersebut.`;
   const encoded = encodeURIComponent(msg);
   validContacts.forEach((num, i) => {
     setTimeout(() => window.open(`https://wa.me/${num}?text=${encoded}`, '_blank'), i * 700);
@@ -779,7 +871,7 @@ function openAlarmScreen(isAutoAlarm, isTest){
   } else {
     el('alarmTitle').textContent = isAutoAlarm ? '⚠ ALARM AKTIF ⚠' : 'Nonaktifkan Panic Mode';
     el('alarmMsg').textContent = isAutoAlarm
-      ? '30 menit terlampaui tanpa konfirmasi aman. Masukkan passcode untuk mematikan alarm.'
+      ? `${el('alarmDurationLabel').textContent} terlampaui tanpa konfirmasi aman. Masukkan passcode untuk mematikan alarm.`
       : 'Masukkan passcode untuk menghentikan mode panic.';
   }
   el('alarmOverlay').classList.add('show');
@@ -822,7 +914,7 @@ function deactivatePanic(){
   el('panicBtn').classList.remove('active');
   el('panicBtn').querySelector('.sub-label').textContent = 'TEKAN DI SINI';
   el('mainHeading').textContent = 'Kamu aman sekarang.';
-  el('mainSub').textContent = 'Mode panic dinonaktifkan. Tekan tombol lagi kapan pun dibutuhkan.';
+  el('mainSub').innerHTML = 'Mode panic dinonaktifkan. Tekan tombol lagi kapan pun dibutuhkan. Alarm berikutnya akan bunyi dalam <span id="mainSubDuration">' + el('alarmDurationLabel').textContent + '</span> kalau tidak dimatikan.';
   el('hintText').textContent = 'Siaga kembali';
   el('livePanel').classList.add('hidden');
   el('gpsStatus').textContent = 'Siaga';
