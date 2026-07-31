@@ -191,6 +191,7 @@
     <div class="live-row"><span>ALARM BUNYI DALAM</span><span id="alarmDurationLabel">30 menit</span></div>
     <div class="live-row"><span>LOKASI TERAKHIR</span><span id="liveTime">—</span></div>
     <div class="live-coords" id="liveCoords">Mencari GPS…</div>
+    <div class="live-row"><span>Kualitas sinyal</span><span id="liveAccuracy" style="font-family:'JetBrains Mono',monospace;">—</span></div>
     <div class="live-row" style="margin-top:8px"><span><span class="rec-dot"></span>REKAM AUDIO</span><span id="recStatus">Aktif</span></div>
     <div id="recordingsList" style="margin-top:6px;"></div>
     <div class="timer-big" id="countdownTimer">30:00</div>
@@ -226,6 +227,7 @@
   <p id="alarmMsg">Alarm ini hanya bisa dimatikan dengan passcode yang kamu buat sendiri.</p>
   <input type="password" id="alarmPasscodeInput" inputmode="numeric" maxlength="8" placeholder="Masukkan passcode" autocomplete="off">
   <button class="btn btn-green" id="submitPasscodeBtn">Matikan Alarm</button>
+  <button class="btn btn-outline hidden" id="cancelEditBtn" style="margin-top:10px;">Batal</button>
   <p class="note" id="alarmAttempts" style="margin-top:14px;color:#ffb3b3;"></p>
 </div>
 
@@ -348,12 +350,38 @@ async function hashText(text){
 }
 
 /* ================= SETUP PASSCODE ================= */
+let editUnlockMode = false; // penanda supaya submitPasscodeBtn tahu ini verifikasi untuk EDIT, bukan matikan alarm
+
 el('editSetupBtn').addEventListener('click', () => {
+  if(!passcodeHash){
+    // belum pernah ada passcode sama sekali, tidak ada yang perlu dilindungi
+    openEditPanels();
+    return;
+  }
+  // sudah ada passcode tersimpan -> wajib verifikasi dulu sebelum bisa edit
+  editUnlockMode = true;
+  el('alarmTitle').textContent = '🔒 Verifikasi Diperlukan';
+  el('alarmMsg').textContent = 'Masukkan passcode untuk membuka pengaturan kontak & passcode.';
+  el('cancelEditBtn').classList.remove('hidden');
+  el('alarmOverlay').classList.add('show');
+  el('alarmPasscodeInput').value = '';
+  el('alarmPasscodeInput').focus();
+});
+
+el('cancelEditBtn').addEventListener('click', () => {
+  editUnlockMode = false;
+  wrongAttempts = 0;
+  el('alarmAttempts').textContent = '';
+  el('cancelEditBtn').classList.add('hidden');
+  el('alarmOverlay').classList.remove('show');
+});
+
+function openEditPanels(){
   el('passcodePanel').classList.remove('hidden');
   el('contactPanel').classList.remove('hidden');
   el('passcodePanel').scrollIntoView({behavior:'smooth'});
   showToast('Panel edit dibuka. Kontak lama tetap tersimpan, tinggal ubah.');
-});
+}
 
 el('savePasscodeBtn').addEventListener('click', async () => {
   const p1 = el('passcodeInput').value.trim();
@@ -613,25 +641,67 @@ function getQuickLocationThenSend(validContacts){
       const acc = Math.round(pos.coords.accuracy);
       lastCoords = { lat, lng, acc };
 
-      el('liveCoords').textContent = `${lat}, ${lng}`;
-      el('liveTime').textContent = new Date().toLocaleTimeString('id-ID');
-      addLog(`Koordinat didapat (±${acc}m) — mengirim ulang lokasi tepat`);
+      updateLiveCoordsDisplay(lat, lng, acc, false);
+      addLog(`Titik awal didapat (±${acc}m, kasar) — menyempurnakan presisi otomatis…`);
 
-      // begitu koordinat asli didapat, kirim ulang WA dengan lokasi tepat
-      const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
-      const msg = `📍 LOKASI TERKONFIRMASI JAGAJABAR\n${mapsLink}\nAkurasi: ±${acc}m\nWaktu: ${new Date().toLocaleTimeString('id-ID')}`;
-      const encoded = encodeURIComponent(msg);
-      let targets = [...validContacts];
-      if(el('notifyPoliceCheck').checked) targets = targets.concat(POLICE_CONTACTS);
-      targets.forEach((num, i) => {
-        setTimeout(() => window.open(`https://wa.me/${num}?text=${encoded}`, '_blank'), i * 300);
-      });
+      // kirim versi awal supaya kontak segera tahu perkiraan lokasi
+      broadcastLocationUpdate(validContacts, lat, lng, acc, '📍 LOKASI AWAL (PERKIRAAN)');
+
+      // langsung minta ulang dengan presisi tinggi untuk menggantikan titik kasar ini
+      requestHighPrecisionFollowUp(validContacts);
     },
     (err) => {
-      addLog('GPS cepat gagal: ' + (err.message || 'coba lagi otomatis lewat tracking berkelanjutan'));
+      addLog('GPS cepat gagal: ' + (err.message || 'mencoba presisi tinggi sebagai cadangan'));
+      requestHighPrecisionFollowUp(validContacts);
     },
-    { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 } // akurasi rendah = lebih cepat dapat hasil
+    { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 } // akurasi rendah dulu = lebih cepat dapat hasil awal
   );
+}
+
+/* ================= UPGRADE OTOMATIS KE PRESISI TINGGI ================= */
+function requestHighPrecisionFollowUp(validContacts){
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      const acc = Math.round(pos.coords.accuracy);
+      lastCoords = { lat, lng, acc };
+
+      updateLiveCoordsDisplay(lat, lng, acc, true);
+      addLog(`✓ Presisi tinggi didapat (±${acc}m) — lokasi akurat terkirim`);
+      broadcastLocationUpdate(validContacts, lat, lng, acc, '📍 LOKASI TERKONFIRMASI (PRESISI TINGGI)');
+    },
+    (err) => {
+      addLog('Presisi tinggi gagal, tetap pakai titik perkiraan sebelumnya: ' + (err.message || ''));
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+function updateLiveCoordsDisplay(lat, lng, acc, isPrecise){
+  el('liveCoords').textContent = `${lat}, ${lng}`;
+  el('liveTime').textContent = new Date().toLocaleTimeString('id-ID');
+  const accEl = el('liveAccuracy');
+  if(accEl){
+    let quality, color;
+    if(acc <= 20){ quality = 'Sangat akurat'; color = 'var(--green)'; }
+    else if(acc <= 50){ quality = 'Akurat'; color = 'var(--green)'; }
+    else if(acc <= 150){ quality = 'Cukup akurat'; color = 'var(--amber)'; }
+    else { quality = 'Kasar, menyempurnakan…'; color = 'var(--red)'; }
+    accEl.textContent = `±${acc}m — ${quality}${isPrecise ? ' ✓' : ''}`;
+    accEl.style.color = color;
+  }
+}
+
+function broadcastLocationUpdate(validContacts, lat, lng, acc, label){
+  const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
+  const msg = `${label}\nJAGAJABAR\n${mapsLink}\nAkurasi: ±${acc}m\nWaktu: ${new Date().toLocaleTimeString('id-ID')}`;
+  const encoded = encodeURIComponent(msg);
+  let targets = [...validContacts];
+  if(el('notifyPoliceCheck').checked) targets = targets.concat(POLICE_CONTACTS);
+  targets.forEach((num, i) => {
+    setTimeout(() => window.open(`https://wa.me/${num}?text=${encoded}`, '_blank'), i * 300);
+  });
 }
 
 /* ================= TRACKING LOKASI REALTIME (presisi tinggi, berkelanjutan) ================= */
@@ -646,8 +716,7 @@ function startLocationTracking(validContacts){
       lastCoords = { lat, lng, acc };
       pingCount++;
 
-      el('liveCoords').textContent = `${lat}, ${lng}`;
-      el('liveTime').textContent = new Date().toLocaleTimeString('id-ID');
+      updateLiveCoordsDisplay(lat, lng, acc, true);
       el('pingCount').textContent = pingCount;
 
       saveLocationPing(lat, lng, acc);
@@ -878,6 +947,7 @@ function stopAlarmSound(){
 }
 
 function openAlarmScreen(isAutoAlarm, isTest){
+  el('cancelEditBtn').classList.add('hidden'); // pastikan tombol batal tidak muncul di alarm sungguhan/test
   if(isTest){
     el('alarmTitle').textContent = '🔔 TEST ALARM';
     el('alarmMsg').textContent = 'Ini simulasi. Masukkan passcode untuk mematikan dan kembali normal. Kontak darurat TIDAK menerima notifikasi apa pun dari test ini.';
@@ -899,7 +969,15 @@ el('submitPasscodeBtn').addEventListener('click', async () => {
   const inputHash = await hashText(input);
 
   if(inputHash === passcodeHash){
-    if(panicActive){
+    wrongAttempts = 0;
+    el('alarmAttempts').textContent = '';
+    if(editUnlockMode){
+      // ini verifikasi untuk buka panel edit kontak/passcode
+      editUnlockMode = false;
+      el('cancelEditBtn').classList.add('hidden');
+      el('alarmOverlay').classList.remove('show');
+      openEditPanels();
+    } else if(panicActive){
       deactivatePanic();
     } else {
       // ini cuma test alarm dari halaman awal, panic belum pernah aktif
