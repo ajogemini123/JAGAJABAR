@@ -571,23 +571,57 @@ function activatePanic(validContacts){
 
   addLog('Panic diaktifkan — mengirim secepat mungkin');
 
-  // Broadcast WA ke semua kontak + foto kilat, dijalankan segera dan paralel
-  fireAllChannelsImmediately(validContacts);
   captureQuickPhoto();
-
-  // SMS & telepon manual tersedia sebagai cadangan (tombol di panel live), tidak auto-buka untuk kurangi popup
   setTimeout(runDiagnostics, 1200);
 
-  // Ambil lokasi - SATU alur linear: dapat titik awal, kirim ulang presisi, lanjut tracking berkelanjutan
-  getInitialLocation(validContacts);
+  // SATU alur: coba dapat GPS singkat dulu (maks 4 detik), lalu kirim SATU broadcast WA
+  // (bukan kirim 2x terpisah) supaya tidak membanjiri popup saat kontak banyak
+  sendSingleEmergencyBroadcast(validContacts);
 
   startAudioRecording();
   startCountdown(validContacts);
   startRepeatWhatsApp(validContacts);
 }
 
+/* ================= KIRIM SATU BROADCAST DARURAT (TUNGGU GPS SINGKAT, LALU KIRIM SEKALI SAJA) ================= */
+function sendSingleEmergencyBroadcast(validContacts){
+  if(!navigator.geolocation){
+    addLog('Perangkat tidak mendukung GPS — mengirim tanpa koordinat');
+    fireAllChannelsImmediately(validContacts);
+    return;
+  }
+
+  el('liveCoords').textContent = 'Mencari sinyal GPS…';
+  el('hintText').textContent = 'Menunggu lokasi sebelum mengirim…';
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      const acc = Math.round(pos.coords.accuracy);
+      lastCoords = { lat, lng, acc };
+      el('liveCoords').textContent = `${lat}, ${lng}`;
+      el('liveTime').textContent = new Date().toLocaleTimeString('id-ID');
+      el('hintText').textContent = 'Jangan tutup halaman ini';
+      addLog(`Koordinat didapat (±${acc}m) — mengirim broadcast dengan lokasi akurat`);
+
+      fireAllChannelsImmediately(validContacts);
+      startLocationTracking(validContacts);
+    },
+    (err) => {
+      // GPS benar-benar gagal (izin ditolak / tidak ada sinyal sama sekali) - baru kirim tanpa koordinat sebagai fallback terakhir
+      el('hintText').textContent = 'Jangan tutup halaman ini';
+      addLog('GPS gagal total: ' + (err.code === 1 ? 'izin ditolak' : (err.message || 'sinyal tidak ditemukan')) + ' — mengirim tanpa koordinat');
+      fireAllChannelsImmediately(validContacts);
+      startLocationTracking(validContacts);
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+  );
+}
+
 /* ================= FOTO KILAT OTOMATIS (KAMERA BELAKANG) ================= */
 let capturedPhotoUrl = null;
+let capturedPhotoBlob = null;
 
 async function captureQuickPhoto(){
   try{
@@ -611,12 +645,39 @@ async function captureQuickPhoto(){
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
     if(capturedPhotoUrl) URL.revokeObjectURL(capturedPhotoUrl);
+    capturedPhotoBlob = blob;
     capturedPhotoUrl = URL.createObjectURL(blob);
 
     renderCapturedPhoto();
     addLog('Foto kilat berhasil diambil dari kamera belakang');
+
+    // langsung tawarkan share sheet native (WhatsApp jadi salah satu opsi) begitu foto siap
+    tryShareCapturedPhoto();
   }catch(e){
     addLog('Foto kilat gagal: izin kamera ditolak/tidak tersedia');
+  }
+}
+
+/* Web Share API - buka share sheet native iOS dengan foto terlampir, WhatsApp jadi salah satu pilihan */
+async function tryShareCapturedPhoto(){
+  if(!capturedPhotoBlob) return;
+  if(!navigator.share || !navigator.canShare){
+    addLog('Share otomatis tidak didukung browser ini, gunakan tombol unduh manual di bawah');
+    return;
+  }
+  try{
+    const file = new File([capturedPhotoBlob], 'jagajabar-foto-kilat.jpg', { type: 'image/jpeg' });
+    if(navigator.canShare({ files: [file] })){
+      await navigator.share({
+        files: [file],
+        title: 'Foto Kilat JAGAJABAR',
+        text: buildEmergencyText()
+      });
+      addLog('Jendela bagikan foto terbuka — pilih WhatsApp untuk kirim ke kontak');
+    }
+  }catch(e){
+    // user membatalkan share sheet atau tidak didukung, ini bukan error fatal
+    addLog('Share foto dibatalkan atau tidak tersedia, gunakan tombol unduh manual');
   }
 }
 
@@ -625,8 +686,13 @@ function renderCapturedPhoto(){
   if(!container || !capturedPhotoUrl) return;
   container.innerHTML = `
     <img src="${capturedPhotoUrl}" style="width:100%;border-radius:10px;margin-top:8px;border:1px solid var(--line);">
-    <a href="${capturedPhotoUrl}" download="jagajabar-foto-kilat.jpg" class="btn btn-outline" style="margin-top:8px;display:block;text-align:center;text-decoration:none;">⬇ Unduh &amp; Bagikan Foto Kilat</a>
+    <div class="row-gap" style="margin-top:8px;">
+      <button class="btn btn-outline" id="sharePhotoBtn">📤 Bagikan ke WhatsApp</button>
+      <a href="${capturedPhotoUrl}" download="jagajabar-foto-kilat.jpg" class="btn btn-outline" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">⬇ Unduh</a>
+    </div>
   `;
+  const shareBtn = document.getElementById('sharePhotoBtn');
+  if(shareBtn) shareBtn.addEventListener('click', tryShareCapturedPhoto);
 }
 
 /* ================= TEMBAK SEMUA CHANNEL (WA BROADCAST KE SEMUA KONTAK + SMS/TELEPON KE KONTAK UTAMA) ================= */
@@ -646,48 +712,6 @@ function fireAllChannelsImmediately(validContacts){
 }
 
 /* ================= AMBIL LOKASI - SATU PERMINTAAN LINEAR, TIDAK BERSAING DENGAN TRACKING BERKELANJUTAN ================= */
-function getInitialLocation(validContacts){
-  if(!navigator.geolocation){
-    addLog('Perangkat tidak mendukung GPS');
-    return;
-  }
-
-  el('liveCoords').textContent = 'Mencari sinyal GPS…';
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude.toFixed(6);
-      const lng = pos.coords.longitude.toFixed(6);
-      const acc = Math.round(pos.coords.accuracy);
-      lastCoords = { lat, lng, acc };
-
-      el('liveCoords').textContent = `${lat}, ${lng}`;
-      el('liveTime').textContent = new Date().toLocaleTimeString('id-ID');
-      addLog(`Koordinat awal didapat (±${acc}m)`);
-
-      // kirim ulang lokasi presisi begitu didapat
-      const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
-      const msg = `📍 LOKASI TERKONFIRMASI JAGAJABAR\n${mapsLink}\nAkurasi: ±${acc}m\nWaktu: ${new Date().toLocaleTimeString('id-ID')}`;
-      const encoded = encodeURIComponent(msg);
-      let targets = [...validContacts];
-      if(el('notifyPoliceCheck').checked) targets = targets.concat(POLICE_CONTACTS);
-      targets.forEach((num, i) => {
-        setTimeout(() => window.open(`https://wa.me/${num}?text=${encoded}`, '_blank'), i * 350);
-      });
-
-      // lanjut ke tracking berkelanjutan SETELAH titik pertama didapat, tidak bersaing rebutan GPS
-      startLocationTracking(validContacts);
-    },
-    (err) => {
-      el('liveCoords').textContent = 'GPS tidak tersedia';
-      addLog('GPS gagal: ' + (err.code === 1 ? 'izin ditolak' : err.message || 'sinyal tidak ditemukan'));
-      // tetap coba tracking berkelanjutan sebagai cadangan
-      startLocationTracking(validContacts);
-    },
-    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-  );
-}
-
 /* ================= TRACKING LOKASI REALTIME (presisi tinggi, berkelanjutan) ================= */
 function startLocationTracking(validContacts){
   if(!navigator.geolocation){ showToast('Perangkat tidak mendukung GPS'); return; }
