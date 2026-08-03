@@ -3,104 +3,134 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>JAGAJABAR — Panic Button Darurat</title>
+<title>Jaga Jabar — Sistem Panic Button Darurat</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
   :root{
-    --bg:#0b0d0f; --panel:#14171a; --panel2:#1b1f23;
-    --red:#ff2d2d; --amber:#ffb020; --green:#23c16b;
-    --ink:#f4f2ee; --dim:#9aa0a6; --line:#2a2e33;
+    /* Identitas Jawa Barat: indigo malam sebagai dasar kelembagaan, emas Kujang sebagai aksen kehormatan */
+    --bg:#0a1220; --panel:#101b30; --panel2:#16233d;
+    --indigo:#1e3a5f; --gold:#c9a04a; --gold-bright:#e0bc6b;
+    --red:#c4432f; --amber:#d99a3d; --green:#3d9970;
+    --ink:#f2ede1; --dim:#8a97ab; --line:#243350;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--ink);font-family:'Archivo',sans-serif;min-height:100vh;
-    display:flex;flex-direction:column;align-items:center;padding-bottom:40px;}
+  body{background:var(--bg);color:var(--ink);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;padding-bottom:40px;
+    background-image:
+      radial-gradient(ellipse 800px 400px at 50% -10%, rgba(201,160,74,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 600px 600px at 100% 100%, rgba(30,58,95,0.25) 0%, transparent 55%);
+    background-attachment:fixed;}
   header{width:100%;max-width:520px;padding:22px 20px 10px;display:flex;justify-content:space-between;align-items:center;}
   .brand{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:12px;
-    letter-spacing:0.12em;color:var(--dim);text-transform:uppercase;}
-  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s infinite;}
+    letter-spacing:0.14em;color:var(--gold);text-transform:uppercase;font-weight:600;}
+  .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s infinite;}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:0.35}}
   .status-pill{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);border:1px solid var(--line);padding:5px 10px;border-radius:20px;}
   main{width:100%;max-width:520px;padding:10px 20px 0;display:flex;flex-direction:column;align-items:center;}
-  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.15em;color:var(--red);text-transform:uppercase;margin-top:16px;text-align:center;}
-  h1{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,8vw,40px);text-align:center;line-height:1.05;margin-top:8px;}
-  .sub{text-align:center;color:var(--dim);font-size:14px;line-height:1.5;margin-top:10px;max-width:380px;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase;margin-top:16px;text-align:center;font-weight:600;}
+  h1{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(30px,8vw,42px);text-align:center;line-height:1.08;margin-top:10px;letter-spacing:-0.01em;}
+  .sub{text-align:center;color:var(--dim);font-size:14.5px;line-height:1.6;margin-top:12px;max-width:390px;}
 
-  .sos-wrap{position:relative;margin:36px 0 8px;width:210px;height:210px;display:flex;align-items:center;justify-content:center;}
-  .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,45,45,0.35);animation:ringpulse 2.4s ease-out infinite;}
-  .ring.r2{animation-delay:0.8s;} .ring.r3{animation-delay:1.6s;}
-  @keyframes ringpulse{0%{transform:scale(0.75);opacity:0.8;}100%{transform:scale(1.35);opacity:0;}}
-  #panicBtn{position:relative;width:170px;height:170px;border-radius:50%;border:none;
-    background:radial-gradient(circle at 35% 30%,#ff5a5a,var(--red) 55%,#b30d0d 100%);color:#fff;
-    font-family:'Archivo Black',sans-serif;font-size:26px;cursor:pointer;
-    box-shadow:0 0 0 6px rgba(255,45,45,0.12),0 20px 50px -12px rgba(255,45,45,0.55),inset 0 -6px 14px rgba(0,0,0,0.25);
+  .sos-wrap{position:relative;margin:38px 0 8px;width:212px;height:212px;display:flex;align-items:center;justify-content:center;}
+  .ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(201,160,74,0.28);animation:ringpulse 2.6s ease-out infinite;}
+  .ring.r2{animation-delay:0.85s;} .ring.r3{animation-delay:1.7s;}
+  @keyframes ringpulse{0%{transform:scale(0.75);opacity:0.9;}100%{transform:scale(1.4);opacity:0;}}
+  #panicBtn{position:relative;width:172px;height:172px;border-radius:50%;border:2px solid rgba(201,160,74,0.4);
+    background:radial-gradient(circle at 35% 28%,#d1553d,var(--red) 55%,#8f2c1c 100%);color:#fdf8ee;
+    font-family:'Fraunces',serif;font-weight:700;font-size:25px;cursor:pointer;
+    box-shadow:0 0 0 6px rgba(196,67,47,0.1),0 22px 50px -14px rgba(196,67,47,0.5),inset 0 -6px 16px rgba(0,0,0,0.3);
     transition:transform 0.12s ease;-webkit-tap-highlight-color:transparent;}
   #panicBtn:active{transform:scale(0.94);}
-  #panicBtn.active{background:radial-gradient(circle at 35% 30%,#4dff8f,var(--green) 55%,#0d8a45 100%);
-    box-shadow:0 0 0 6px rgba(35,193,107,0.15),0 20px 50px -12px rgba(35,193,107,0.6),inset 0 -6px 14px rgba(0,0,0,0.25);}
-  #panicBtn .sub-label{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;letter-spacing:0.14em;margin-top:6px;opacity:0.9;}
+  #panicBtn.active{border-color:rgba(61,153,112,0.5);background:radial-gradient(circle at 35% 28%,#4fb583,var(--green) 55%,#256b4c 100%);
+    box-shadow:0 0 0 6px rgba(61,153,112,0.12),0 22px 50px -14px rgba(61,153,112,0.55),inset 0 -6px 16px rgba(0,0,0,0.3);}
+  #panicBtn .sub-label{display:block;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.18em;margin-top:7px;opacity:0.85;text-transform:uppercase;}
 
   .hint{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--dim);text-align:center;margin-top:22px;}
 
-  .panel{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:16px;}
-  .panel-title{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--dim);text-transform:uppercase;margin-bottom:10px;}
+  .panel{width:100%;background:linear-gradient(160deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:16px;
+    box-shadow:0 4px 20px -8px rgba(0,0,0,0.4);}
+  .panel-title{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.14em;color:var(--gold);text-transform:uppercase;margin-bottom:10px;font-weight:600;}
   .panel.hidden{display:none;}
 
   input[type=password], input[type=tel], input[type=text]{
-    width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;
-    color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:16px;letter-spacing:0.1em;margin-bottom:10px;}
-  input:focus{outline:1.5px solid var(--red);border-color:var(--red);}
-  .btn{width:100%;padding:12px;border-radius:8px;border:none;font-family:'Archivo',sans-serif;font-weight:700;
-    font-size:14px;cursor:pointer;letter-spacing:0.02em;}
-  .btn-primary{background:var(--red);color:#fff;}
+    width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:13px 14px;
+    color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:16px;letter-spacing:0.06em;margin-bottom:10px;}
+  input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,160,74,0.15);}
+  .btn{width:100%;padding:13px;border-radius:8px;border:none;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;
+    font-size:14px;cursor:pointer;letter-spacing:0.01em;transition:transform 0.1s ease, opacity 0.15s ease;}
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:linear-gradient(135deg,var(--gold-bright),var(--gold));color:#241a06;}
   .btn-outline{background:none;border:1px solid var(--line);color:var(--dim);}
-  .btn-green{background:var(--green);color:#04170c;}
+  .btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+  .btn-green{background:linear-gradient(135deg,#4fb583,var(--green));color:#07241a;}
   .row-gap{display:flex;gap:8px;}
   .row-gap .btn{flex:1;}
 
   .contact-row{display:flex;gap:8px;margin-bottom:8px;}
   .contact-row input{margin-bottom:0;}
-  .icon-btn{width:42px;height:42px;flex-shrink:0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--dim);font-size:18px;cursor:pointer;}
+  .icon-btn{width:44px;height:44px;flex-shrink:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--dim);font-size:18px;cursor:pointer;}
   .icon-btn:hover{color:var(--red);border-color:var(--red);}
-  .add-contact{width:100%;background:none;border:1px dashed var(--line);border-radius:8px;padding:10px;color:var(--dim);
+  .add-contact{width:100%;background:none;border:1px dashed var(--line);border-radius:8px;padding:11px;color:var(--dim);
     font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;margin-top:2px;}
-  .add-contact:hover{border-color:var(--red);color:var(--red);}
-  .note{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#565b60;margin-top:8px;line-height:1.5;}
+  .add-contact:hover{border-color:var(--gold);color:var(--gold);}
+  .note{font-family:'Plus Jakarta Sans',sans-serif;font-size:11.5px;color:var(--dim);margin-top:8px;line-height:1.6;opacity:0.85;}
 
   /* live status panel saat panic aktif */
-  .live-panel{border-color:var(--red);}
+  .live-panel{border-color:rgba(196,67,47,0.4);}
   .live-row{display:flex;justify-content:space-between;align-items:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);margin-bottom:8px;}
-  .live-coords{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--green);font-weight:700;}
-  .timer-big{font-family:'Archivo Black',sans-serif;font-size:36px;color:var(--amber);text-align:center;margin:10px 0;letter-spacing:0.02em;}
+  .live-coords{font-family:'JetBrains Mono',monospace;font-size:19px;color:var(--gold-bright);font-weight:700;letter-spacing:0.01em;}
+  .timer-big{font-family:'Fraunces',serif;font-weight:700;font-size:38px;color:var(--gold-bright);text-align:center;margin:12px 0;letter-spacing:-0.01em;}
   .rec-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:6px;animation:blink 1s infinite;}
   .log-list{max-height:140px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--dim);
     border-top:1px solid var(--line);margin-top:10px;padding-top:8px;}
   .log-list div{padding:2px 0;}
 
-  /* alarm overlay */
-  .alarm-overlay{position:fixed;inset:0;background:rgba(178,10,10,0.97);z-index:100;
-    display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
+  /* alarm overlay - tema resmi Jawa Barat, tenang dan profesional */
+  .alarm-overlay{position:fixed;inset:0;z-index:100;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(201,160,74,0.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 85%, rgba(30,58,95,0.2) 0%, transparent 45%),
+      linear-gradient(160deg, #060b16 0%, #0a1628 45%, #101f38 100%);
+    display:none;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;
+    overflow:hidden;}
   .alarm-overlay.show{display:flex;}
-  .alarm-overlay h2{font-family:'Archivo Black',sans-serif;font-size:32px;color:#fff;margin-bottom:14px;animation:blink 0.6s infinite;}
-  .alarm-overlay p{color:#ffe0e0;font-size:14px;margin-bottom:22px;max-width:320px;}
-  .alarm-overlay input{max-width:280px;text-align:center;font-size:20px;letter-spacing:0.3em;}
-  .alarm-overlay .btn{max-width:280px;}
+  .alarm-overlay::before{
+    content:'';position:absolute;inset:0;opacity:0.05;pointer-events:none;
+    background-image:
+      repeating-linear-gradient(45deg, transparent, transparent 38px, #c9a04a 38px, #c9a04a 40px),
+      repeating-linear-gradient(-45deg, transparent, transparent 38px, #c9a04a 38px, #c9a04a 40px);
+  }
+  .alarm-crest{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--gold-bright),var(--gold));
+    display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:16px;
+    box-shadow:0 0 0 3px rgba(201,160,74,0.2),0 8px 24px rgba(0,0,0,0.4);position:relative;z-index:1;}
+  .alarm-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.22em;color:var(--gold-bright);
+    text-transform:uppercase;margin-bottom:8px;position:relative;z-index:1;font-weight:600;}
+  .alarm-overlay h2{font-family:'Fraunces',serif;font-weight:700;font-size:25px;color:#fdf8ee;margin-bottom:12px;position:relative;z-index:1;}
+  .alarm-overlay p{color:#b8c4d6;font-size:13.5px;line-height:1.6;margin-bottom:22px;max-width:310px;position:relative;z-index:1;}
+  .alarm-overlay input{max-width:260px;text-align:center;font-size:22px;letter-spacing:0.35em;position:relative;z-index:1;
+    background:rgba(255,255,255,0.05);border:1.5px solid rgba(201,160,74,0.35);}
+  .alarm-overlay input:focus{border-color:var(--gold-bright);box-shadow:0 0 0 3px rgba(201,160,74,0.15);}
+  .alarm-overlay .btn{max-width:260px;position:relative;z-index:1;}
+  .alarm-divider{width:36px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:4px 0 18px;position:relative;z-index:1;}
 
-  .num-grid{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
-  .num-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;text-decoration:none;
-    color:var(--ink);display:flex;flex-direction:column;gap:6px;}
-  .num-card .num{font-family:'Archivo Black',sans-serif;font-size:22px;color:var(--amber);}
-  .num-card .label{font-size:12.5px;font-weight:600;}
+  .num-grid{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+  .num-card{background:linear-gradient(160deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:12px;padding:14px;text-decoration:none;
+    color:var(--ink);display:flex;flex-direction:column;gap:5px;transition:border-color 0.15s ease;}
+  .num-card:hover{border-color:var(--gold);}
+  .num-card .num{font-family:'Fraunces',serif;font-weight:700;font-size:22px;color:var(--gold-bright);}
+  .num-card .label{font-size:12px;font-weight:600;color:var(--dim);}
 
-  .divider{width:100%;display:flex;align-items:center;gap:12px;margin:28px 0 14px;color:var(--dim);
-    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;}
-  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line);}
+  .divider{width:100%;display:flex;align-items:center;gap:12px;margin:30px 0 14px;color:var(--gold);
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;font-weight:600;}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--line),var(--line));}
 
-  footer{width:100%;max-width:520px;padding:26px 20px 10px;text-align:center;}
-  footer p{font-family:'JetBrains Mono',monospace;font-size:10px;color:#4a4f54;line-height:1.6;}
+  footer{width:100%;max-width:520px;padding:28px 20px 10px;text-align:center;}
+  footer p{font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;color:#5a6579;line-height:1.7;}
 
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);
-    border:1px solid var(--red);color:var(--ink);padding:12px 18px;border-radius:10px;font-family:'JetBrains Mono',monospace;
-    font-size:12.5px;opacity:0;pointer-events:none;transition:all 0.25s ease;z-index:10;max-width:88%;text-align:center;}
+    border:1px solid var(--gold);color:var(--ink);padding:12px 18px;border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;
+    font-size:12.5px;font-weight:500;opacity:0;pointer-events:none;transition:all 0.25s ease;z-index:10;max-width:88%;text-align:center;
+    box-shadow:0 8px 24px -8px rgba(0,0,0,0.5);}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
@@ -112,65 +142,15 @@
 </header>
 
 <main>
-  <div class="eyebrow">Panic Button · Darurat</div>
-  <h1 id="mainHeading">Tekan. Kamu<br>terlindungi.</h1>
-  <p class="sub" id="mainSub">Sekali tekan: lokasi realtime terkirim, rekaman suara otomatis tersimpan, dan alarm keras aktif bila tak dimatikan dalam 30 menit.</p>
+  <div class="eyebrow">Jaga Jabar · Panic Button</div>
+  <h1 id="mainHeading">Satu tekan,<br>kamu terlindungi.</h1>
 
   <div class="sos-wrap">
     <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
     <button id="panicBtn">PANIC<span class="sub-label">TEKAN DI SINI</span></button>
   </div>
   <p class="hint" id="hintText">Atur passcode dan kontak dulu di bawah sebelum darurat terjadi</p>
-
-  <!-- DIAGNOSTIK SISTEM - OTOMATIS CEK MASALAH ENVIRONMENT -->
-  <div class="panel" id="diagnosticPanel" style="border-color:var(--amber);">
-    <div class="panel-title" style="color:var(--amber);">⚙ Diagnostik Sistem</div>
-    <div class="live-row"><span>Koneksi halaman</span><span id="diagProtocol">Mengecek…</span></div>
-    <div class="live-row"><span>Izin lokasi (GPS)</span><span id="diagGps">Mengecek…</span></div>
-    <div class="live-row"><span>Izin mikrofon</span><span id="diagMic">Mengecek…</span></div>
-    <p class="note" id="diagAdvice"></p>
-  </div>
-
-  <!-- SETUP PASSCODE -->
-  <div class="panel" id="passcodePanel">
-    <div class="panel-title">1. Buat Passcode Alarm (4-8 digit)</div>
-    <input type="password" id="passcodeInput" inputmode="numeric" maxlength="8" placeholder="Buat passcode rahasia" autocomplete="off">
-    <input type="password" id="passcodeConfirm" inputmode="numeric" maxlength="8" placeholder="Ulangi passcode" autocomplete="off">
-    <button class="btn btn-primary" id="savePasscodeBtn">Simpan Passcode</button>
-    <button class="btn btn-outline" id="testAlarmStandaloneBtn" style="margin-top:8px;border-color:var(--amber);color:var(--amber);">🔔 Test Bunyi Alarm & Layar Passcode</button>
-    <p class="note">Passcode ini WAJIB untuk mematikan alarm. Simpan hanya di ingatanmu — jangan beri tahu siapa pun, termasuk saat dipaksa buru-buru. Tersimpan terenkripsi di perangkat ini saja, tidak dikirim ke mana pun.</p>
-  </div>
-
-  <!-- DURASI ALARM - SELALU TERLIHAT, TIDAK IKUT KE-HIDE -->
-  <div class="panel" id="durationPanel">
-    <div class="panel-title">⏱ Alarm Berbunyi Otomatis Setelah</div>
-    <select id="alarmDurationSelect" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:16px;">
-      <option value="0.5">30 detik (testing super cepat)</option>
-      <option value="1">1 menit</option>
-      <option value="5">5 menit</option>
-      <option value="10">10 menit</option>
-      <option value="15">15 menit</option>
-      <option value="30" selected>30 menit</option>
-      <option value="60">60 menit</option>
-    </select>
-    <p class="note">Ini durasi countdown sebelum alarm otomatis berbunyi kalau panic mode tidak dimatikan. Bisa diganti kapan saja, tersimpan otomatis.</p>
-  </div>
-
-  <!-- SETUP KONTAK -->
-  <div class="panel" id="contactPanel">
-    <div class="panel-title">2. Kontak Darurat (WhatsApp)</div>
-    <div id="contactList"></div>
-    <button class="add-contact" id="addContactBtn">+ Tambah kontak</button>
-    <p class="note">Format: 628xxxxxxxxxx. Kontak ini menerima lokasi realtime dan notifikasi bila alarm berbunyi.</p>
-    <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
-      <input type="checkbox" id="notifyPoliceCheck" style="width:18px;height:18px;margin:0;">
-      <label for="notifyPoliceCheck" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);text-transform:none;letter-spacing:normal;">
-        Kirim juga lokasi ke WA pengaduan Polrestabes Bandung
-      </label>
-    </div>
-    <p class="note" id="policeNote">Lapor Kang Busar: 0821-3020-1996 · Tim Prabu: 0818-1861-2889. Cek ulang ke Instagram @polrestabesbandung karena nomor hotline bisa berganti sewaktu-waktu.</p>
-    <p class="note" style="color:var(--amber);">Penting: izinkan pop-up untuk situs ini di pengaturan browser, kalau tidak WhatsApp tidak akan otomatis terbuka saat panic aktif.</p>
-  </div>
+  <p class="sub" id="mainSub" style="margin-top:16px;">Lokasi, rekaman, dan alarm otomatis aktif dalam hitungan detik.</p>
 
   <!-- LIVE PANEL (muncul saat panic aktif) -->
   <div class="panel live-panel hidden" id="livePanel">
@@ -179,6 +159,7 @@
     <div class="live-row"><span>LOKASI TERAKHIR</span><span id="liveTime">—</span></div>
     <div class="live-coords" id="liveCoords">Mencari GPS…</div>
     <div class="live-row" style="margin-top:8px"><span><span class="rec-dot"></span>REKAM AUDIO</span><span id="recStatus">Aktif</span></div>
+    <div id="capturedPhotoBox"></div>
     <div class="timer-big" id="countdownTimer">30:00</div>
     <div class="live-row"><span>UPDATE KE-</span><span id="pingCount">0</span></div>
     <div class="log-list" id="activityLog"></div>
@@ -186,7 +167,6 @@
       <button class="btn btn-outline" id="manualSmsBtn">📩 Kirim SMS</button>
       <button class="btn btn-outline" id="manualCallBtn">📞 Telepon</button>
     </div>
-    <button class="btn btn-outline" id="testAlarmBtn" style="margin-top:8px;border-color:var(--amber);color:var(--amber);">🔔 Test Alarm (tanpa tunggu 30 menit)</button>
     <button class="btn btn-outline" id="stopPanicBtn" style="margin-top:8px;">Masukkan Passcode untuk Nonaktifkan</button>
   </div>
 
@@ -197,11 +177,65 @@
     <a class="num-card" href="tel:113"><span class="num">113</span><span class="label">Pemadam Kebakaran</span></a>
     <a class="num-card" href="tel:119"><span class="num">119</span><span class="label">Ambulans/Medis</span></a>
   </div>
+
+  <div class="divider">Pengaturan</div>
+  <button class="btn btn-outline" id="editSetupBtn" style="margin-bottom:6px;">⚙ Kontak, Passcode &amp; Durasi Alarm</button>
+
+  <!-- DIAGNOSTIK SISTEM - OTOMATIS CEK MASALAH ENVIRONMENT -->
+  <div class="panel" id="diagnosticPanel" style="border-color:rgba(217,154,61,0.35);">
+    <div class="panel-title" style="color:var(--amber);">Diagnostik Sistem</div>
+    <div class="live-row"><span>Koneksi halaman</span><span id="diagProtocol">Mengecek…</span></div>
+    <div class="live-row"><span>Izin lokasi (GPS)</span><span id="diagGps">Mengecek…</span></div>
+    <div class="live-row"><span>Izin mikrofon</span><span id="diagMic">Mengecek…</span></div>
+    <div class="live-row"><span>Izin kamera</span><span id="diagCamera">Mengecek…</span></div>
+    <p class="note" id="diagAdvice"></p>
+  </div>
+
+  <!-- SETUP PASSCODE -->
+  <div class="panel hidden" id="passcodePanel">
+    <div class="panel-title">Passcode Alarm (4-8 digit)</div>
+    <input type="password" id="passcodeInput" inputmode="numeric" maxlength="8" placeholder="Buat passcode rahasia" autocomplete="off">
+    <input type="password" id="passcodeConfirm" inputmode="numeric" maxlength="8" placeholder="Ulangi passcode" autocomplete="off">
+    <button class="btn btn-primary" id="savePasscodeBtn">Simpan Passcode</button>
+    <p class="note">Passcode ini wajib untuk mematikan alarm. Simpan hanya di ingatanmu — jangan beri tahu siapa pun. Tersimpan terenkripsi di perangkat ini saja, tidak dikirim ke mana pun. Setelah tersimpan, mengubahnya kembali membutuhkan passcode lama.</p>
+  </div>
+
+  <!-- DURASI ALARM -->
+  <div class="panel hidden" id="durationPanel">
+    <div class="panel-title">Alarm Berbunyi Otomatis Setelah</div>
+    <select id="alarmDurationSelect" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:16px;">
+      <option value="0.5">30 detik</option>
+      <option value="1">1 menit</option>
+      <option value="5">5 menit</option>
+      <option value="10">10 menit</option>
+      <option value="15">15 menit</option>
+      <option value="30" selected>30 menit</option>
+      <option value="60">60 menit</option>
+    </select>
+    <p class="note">Durasi sebelum alarm otomatis berbunyi jika panic mode tidak dinonaktifkan.</p>
+  </div>
+
+  <!-- SETUP KONTAK -->
+  <div class="panel hidden" id="contactPanel">
+    <div class="panel-title">Kontak Darurat (WhatsApp)</div>
+    <div id="contactList"></div>
+    <button class="add-contact" id="addContactBtn">+ Tambah kontak</button>
+    <p class="note">Format: 08xxx atau 628xxx. Semua kontak menerima broadcast otomatis secara bersamaan saat panic diaktifkan.</p>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="notifyPoliceCheck" style="width:18px;height:18px;margin:0;">
+      <label for="notifyPoliceCheck" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:var(--dim);">
+        Sertakan WA pengaduan Polrestabes Bandung
+      </label>
+    </div>
+    <p class="note" id="policeNote">Lapor Kang Busar: 0821-3020-1996 · Tim Prabu: 0818-1861-2889.</p>
+    <p class="note" style="color:var(--amber);">Izinkan pop-up untuk situs ini agar WhatsApp dapat terbuka otomatis saat panic aktif.</p>
+  </div>
 </main>
 
 <footer>
-  <p>JAGAJABAR mempercepat proses meminta bantuan, bukan pengganti layanan darurat resmi (112/110/113/119). Rekaman audio hanya merekam suara di sekitar perangkatmu sendiri, tersimpan lokal di perangkat ini.</p>
+  <p>JAGAJABAR mempercepat proses meminta bantuan, bukan pengganti layanan darurat resmi (112/110/113/119). Rekaman audio dan foto hanya merekam sekitar perangkatmu sendiri, tersimpan lokal di perangkat ini.</p>
 </footer>
+
 
 <!-- ALARM OVERLAY -->
 <div class="alarm-overlay" id="alarmOverlay">
@@ -209,6 +243,7 @@
   <p id="alarmMsg">Alarm ini hanya bisa dimatikan dengan passcode yang kamu buat sendiri.</p>
   <input type="password" id="alarmPasscodeInput" inputmode="numeric" maxlength="8" placeholder="Masukkan passcode" autocomplete="off">
   <button class="btn btn-green" id="submitPasscodeBtn">Matikan Alarm</button>
+  <button class="btn btn-outline hidden" id="cancelEditBtn" style="margin-top:10px;">Batal</button>
   <p class="note" id="alarmAttempts" style="margin-top:14px;color:#ffb3b3;"></p>
 </div>
 
@@ -288,13 +323,29 @@ async function runDiagnostics(){
     micEl.textContent = '⏳ Akan dicek saat panic ditekan';
   }
 
+  // 3b. Cek izin kamera
+  const camEl = el('diagCamera');
+  if(!isSecure){
+    camEl.textContent = '❌ Diblokir (butuh HTTPS)';
+    camEl.style.color = 'var(--red)';
+  } else if(navigator.permissions){
+    try{
+      const status = await navigator.permissions.query({name:'camera'});
+      const labels = {granted:'✅ Diizinkan', denied:'❌ Ditolak', prompt:'⏳ Belum diminta'};
+      camEl.textContent = labels[status.state] || status.state;
+      camEl.style.color = status.state === 'granted' ? 'var(--green)' : (status.state === 'denied' ? 'var(--red)' : 'var(--amber)');
+    }catch(e){ camEl.textContent = '⏳ Akan dicek saat panic ditekan'; }
+  } else {
+    camEl.textContent = '⏳ Akan dicek saat panic ditekan';
+  }
+
   // 4. Saran berdasarkan hasil
   const adviceEl = el('diagAdvice');
   if(!isSecure){
-    adviceEl.innerHTML = '⚠ Halaman ini dibuka secara lokal (file), bukan lewat web asli. GPS & mikrofon TIDAK AKAN BISA aktif sampai website ini di-hosting ke HTTPS (contoh: Netlify, GitHub Pages). Semua fitur lain (WA/SMS/telepon) tetap bisa dites sekarang.';
+    adviceEl.innerHTML = '⚠ Halaman ini dibuka secara lokal (file), bukan lewat web asli. GPS, mikrofon, & kamera TIDAK AKAN BISA aktif sampai website ini di-hosting ke HTTPS (contoh: GitHub Pages). Semua fitur lain (WA/SMS/telepon) tetap bisa dites sekarang.';
     adviceEl.style.color = 'var(--red)';
   } else {
-    adviceEl.textContent = 'Koneksi aman. Izin GPS & mikrofon akan diminta browser saat tombol PANIC pertama kali ditekan.';
+    adviceEl.textContent = 'Koneksi aman. Izin GPS, mikrofon, & kamera akan diminta browser saat tombol PANIC pertama kali ditekan.';
     adviceEl.style.color = 'var(--dim)';
   }
 }
@@ -365,6 +416,43 @@ el('addContactBtn').addEventListener('click', () => {
 
 el('notifyPoliceCheck').addEventListener('change', saveSetupToStorage);
 el('alarmDurationSelect').addEventListener('change', saveSetupToStorage);
+
+/* ================= EDIT KONTAK & PASSCODE - TERKUNCI TOTAL SAAT PANIC AKTIF ================= */
+let editUnlockMode = false;
+
+el('editSetupBtn').addEventListener('click', () => {
+  if(panicActive){
+    showToast('⚠ Tidak dapat diubah selama mode panic aktif. Nonaktifkan panic terlebih dahulu.');
+    return;
+  }
+  if(!passcodeHash){
+    openEditPanels();
+    return;
+  }
+  editUnlockMode = true;
+  el('alarmTitle').textContent = 'Verifikasi Diperlukan';
+  el('alarmMsg').textContent = 'Masukkan passcode untuk membuka pengaturan kontak & passcode.';
+  el('cancelEditBtn').classList.remove('hidden');
+  el('alarmOverlay').classList.add('show');
+  el('alarmPasscodeInput').value = '';
+  el('alarmPasscodeInput').focus();
+});
+
+el('cancelEditBtn').addEventListener('click', () => {
+  editUnlockMode = false;
+  wrongAttempts = 0;
+  el('alarmAttempts').textContent = '';
+  el('cancelEditBtn').classList.add('hidden');
+  el('alarmOverlay').classList.remove('show');
+});
+
+function openEditPanels(){
+  el('passcodePanel').classList.remove('hidden');
+  el('contactPanel').classList.remove('hidden');
+  el('durationPanel').classList.remove('hidden');
+  el('passcodePanel').scrollIntoView({behavior:'smooth'});
+  showToast('Panel edit dibuka. Data lama tetap tersimpan, tinggal diubah.');
+}
 
 function getValidContacts(){
   return contacts.map(c => normalizePhoneNumber(c)).filter(c => c.length >= 9);
@@ -441,6 +529,9 @@ function loadSetupFromStorage(){
     }
     if(savedHash && getValidContacts().length > 0){
       el('hintText').textContent = 'Siap. Tekan tombol jika dalam bahaya';
+    } else {
+      // belum pernah setup sama sekali -> buka otomatis supaya user tahu harus isi dulu
+      openEditPanels();
     }
   }catch(e){ /* tidak fatal, mulai dari kosong */ }
 }
@@ -472,50 +563,96 @@ function activatePanic(validContacts){
   el('livePanel').classList.remove('hidden');
   el('passcodePanel').classList.add('hidden');
   el('contactPanel').classList.add('hidden');
+  el('durationPanel').classList.add('hidden');
+  el('diagnosticPanel').classList.add('hidden');
+  el('editSetupBtn').style.opacity = '0.4';
+  el('editSetupBtn').style.pointerEvents = 'none';
   el('gpsStatus').textContent = 'Tracking';
 
   addLog('Panic diaktifkan — mengirim secepat mungkin');
 
-  // LANGKAH 1 (tercepat, <1 detik): kirim WA/SMS/telepon SEGERA dengan info "lokasi menyusul"
-  // supaya kontak darurat tahu ada bahaya walau GPS belum sempat dapat titik
+  // Broadcast WA ke semua kontak + foto kilat, dijalankan segera dan paralel
   fireAllChannelsImmediately(validContacts);
+  captureQuickPhoto();
 
-  // LANGKAH 2 (paralel, 1-3 detik biasanya): ambil posisi CEPAT (akurasi rendah dulu)
-  // begitu dapat, langsung kirim ulang pesan dengan koordinat asli
-  getQuickLocationThenSend(validContacts);
-  setTimeout(runDiagnostics, 1500); // refresh status izin setelah browser sempat minta izin
+  // SMS & telepon manual tersedia sebagai cadangan (tombol di panel live), tidak auto-buka untuk kurangi popup
+  setTimeout(runDiagnostics, 1200);
 
-  // LANGKAH 3: mulai tracking berkelanjutan presisi tinggi untuk update selanjutnya
-  startLocationTracking(validContacts);
+  // Ambil lokasi - SATU alur linear: dapat titik awal, kirim ulang presisi, lanjut tracking berkelanjutan
+  getInitialLocation(validContacts);
+
   startAudioRecording();
   startCountdown(validContacts);
   startRepeatWhatsApp(validContacts);
 }
 
-/* ================= TEMBAK SEMUA CHANNEL SEKETIKA, TANPA NUNGGU GPS ================= */
+/* ================= FOTO KILAT OTOMATIS (KAMERA BELAKANG) ================= */
+let capturedPhotoUrl = null;
+
+async function captureQuickPhoto(){
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } } // kamera belakang
+    });
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.setAttribute('playsinline', true);
+    await video.play();
+
+    // beri jeda singkat supaya kamera sempat fokus/exposure menyesuaikan
+    await new Promise(r => setTimeout(r, 400));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    stream.getTracks().forEach(track => track.stop()); // matikan kamera segera setelah jepret
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if(capturedPhotoUrl) URL.revokeObjectURL(capturedPhotoUrl);
+    capturedPhotoUrl = URL.createObjectURL(blob);
+
+    renderCapturedPhoto();
+    addLog('Foto kilat berhasil diambil dari kamera belakang');
+  }catch(e){
+    addLog('Foto kilat gagal: izin kamera ditolak/tidak tersedia');
+  }
+}
+
+function renderCapturedPhoto(){
+  const container = el('capturedPhotoBox');
+  if(!container || !capturedPhotoUrl) return;
+  container.innerHTML = `
+    <img src="${capturedPhotoUrl}" style="width:100%;border-radius:10px;margin-top:8px;border:1px solid var(--line);">
+    <a href="${capturedPhotoUrl}" download="jagajabar-foto-kilat.jpg" class="btn btn-outline" style="margin-top:8px;display:block;text-align:center;text-decoration:none;">⬇ Unduh &amp; Bagikan Foto Kilat</a>
+  `;
+}
+
+/* ================= TEMBAK SEMUA CHANNEL (WA BROADCAST KE SEMUA KONTAK + SMS/TELEPON KE KONTAK UTAMA) ================= */
 function fireAllChannelsImmediately(validContacts){
   const text = buildEmergencyText(); // pakai lastCoords kalau ada, atau placeholder kalau belum
   const encoded = encodeURIComponent(text);
   let targets = [...validContacts];
   if(el('notifyPoliceCheck').checked) targets = targets.concat(POLICE_CONTACTS);
 
-  // WA ke semua target, dibuka langsung tanpa delay
+  // Broadcast WA ke SEMUA kontak sekaligus, jeda singkat antar tab supaya tidak diblokir browser
   targets.forEach((num, i) => {
-    setTimeout(() => window.open(`https://wa.me/${num}?text=${encoded}`, '_blank'), i * 300);
+    setTimeout(() => window.open(`https://wa.me/${num}?text=${encoded}`, '_blank'), i * 350);
   });
 
-  // SMS & dialer ke kontak pertama, dibuka HAMPIR bersamaan (200ms saja, bukan 1.5-3 detik)
-  const firstContact = validContacts[0];
-  setTimeout(() => openSmsToContact(firstContact, text), 200);
-  setTimeout(() => openDialerToContact(firstContact), 400);
-
-  addLog(`Sinyal darurat ditembak ke ${targets.length} nomor (WA+SMS+telepon)`);
+  addLog(`Broadcast WhatsApp terkirim ke ${targets.length} nomor sekaligus`);
   showToast(`Darurat dikirim ke ${targets.length} nomor`);
 }
 
-/* ================= AMBIL LOKASI CEPAT (AKURASI RENDAH DULU), LALU KIRIM ULANG ================= */
-function getQuickLocationThenSend(validContacts){
-  if(!navigator.geolocation) return;
+/* ================= AMBIL LOKASI - SATU PERMINTAAN LINEAR, TIDAK BERSAING DENGAN TRACKING BERKELANJUTAN ================= */
+function getInitialLocation(validContacts){
+  if(!navigator.geolocation){
+    addLog('Perangkat tidak mendukung GPS');
+    return;
+  }
+
+  el('liveCoords').textContent = 'Mencari sinyal GPS…';
 
   navigator.geolocation.getCurrentPosition(
     (pos) => {
@@ -526,22 +663,28 @@ function getQuickLocationThenSend(validContacts){
 
       el('liveCoords').textContent = `${lat}, ${lng}`;
       el('liveTime').textContent = new Date().toLocaleTimeString('id-ID');
-      addLog(`Koordinat didapat (±${acc}m) — mengirim ulang lokasi tepat`);
+      addLog(`Koordinat awal didapat (±${acc}m)`);
 
-      // begitu koordinat asli didapat, kirim ulang WA dengan lokasi tepat
+      // kirim ulang lokasi presisi begitu didapat
       const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
       const msg = `📍 LOKASI TERKONFIRMASI JAGAJABAR\n${mapsLink}\nAkurasi: ±${acc}m\nWaktu: ${new Date().toLocaleTimeString('id-ID')}`;
       const encoded = encodeURIComponent(msg);
       let targets = [...validContacts];
       if(el('notifyPoliceCheck').checked) targets = targets.concat(POLICE_CONTACTS);
       targets.forEach((num, i) => {
-        setTimeout(() => window.open(`https://wa.me/${num}?text=${encoded}`, '_blank'), i * 300);
+        setTimeout(() => window.open(`https://wa.me/${num}?text=${encoded}`, '_blank'), i * 350);
       });
+
+      // lanjut ke tracking berkelanjutan SETELAH titik pertama didapat, tidak bersaing rebutan GPS
+      startLocationTracking(validContacts);
     },
     (err) => {
-      addLog('GPS cepat gagal: ' + (err.message || 'coba lagi otomatis lewat tracking berkelanjutan'));
+      el('liveCoords').textContent = 'GPS tidak tersedia';
+      addLog('GPS gagal: ' + (err.code === 1 ? 'izin ditolak' : err.message || 'sinyal tidak ditemukan'));
+      // tetap coba tracking berkelanjutan sebagai cadangan
+      startLocationTracking(validContacts);
     },
-    { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 } // akurasi rendah = lebih cepat dapat hasil
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
   );
 }
 
@@ -707,30 +850,9 @@ function startCountdown(validContacts){
   }, 1000);
 }
 
-/* ================= NONAKTIFKAN MANUAL (sebelum 30 menit) ================= */
+/* ================= NONAKTIFKAN MANUAL ================= */
 el('stopPanicBtn').addEventListener('click', () => {
   openAlarmScreen(false);
-});
-
-/* ================= TEST ALARM (TIDAK KIRIM WA, HANYA BUNYI + LAYAR PASSCODE) ================= */
-el('testAlarmBtn').addEventListener('click', () => {
-  if(!passcodeHash){ showToast('⚠ Buat passcode dulu sebelum test alarm'); return; }
-  playAlarmSound();
-  openAlarmScreen(true, true); // true = isTest, jadi tidak kirim WA notifikasi ke kontak
-  addLog('🔔 Test alarm dijalankan (manual, tanpa notifikasi ke kontak)');
-});
-
-el('testAlarmStandaloneBtn').addEventListener('click', async () => {
-  const p1 = el('passcodeInput').value.trim();
-  // kalau passcode belum disimpan tapi sudah diketik di form, pakai itu untuk simulasi test
-  if(!passcodeHash && p1.length >= 4){
-    passcodeHash = await hashText(p1);
-    showToast('Passcode sementara dipakai untuk test (belum tersimpan permanen)');
-  }
-  if(!passcodeHash){ showToast('⚠ Isi passcode dulu di kolom atas untuk test'); return; }
-  playAlarmSound();
-  openAlarmScreen(true, true);
-  addLog('🔔 Test alarm dijalankan dari halaman awal');
 });
 
 /* ================= ALARM SETELAH 30 MENIT ================= */
@@ -772,16 +894,11 @@ function stopAlarmSound(){
   alarmAudioCtx = null;
 }
 
-function openAlarmScreen(isAutoAlarm, isTest){
-  if(isTest){
-    el('alarmTitle').textContent = '🔔 TEST ALARM';
-    el('alarmMsg').textContent = 'Ini simulasi. Masukkan passcode untuk mematikan dan kembali normal. Kontak darurat TIDAK menerima notifikasi apa pun dari test ini.';
-  } else {
-    el('alarmTitle').textContent = isAutoAlarm ? '⚠ ALARM AKTIF ⚠' : 'Nonaktifkan Panic Mode';
-    el('alarmMsg').textContent = isAutoAlarm
-      ? '30 menit terlampaui tanpa konfirmasi aman. Masukkan passcode untuk mematikan alarm.'
-      : 'Masukkan passcode untuk menghentikan mode panic.';
-  }
+function openAlarmScreen(isAutoAlarm){
+  el('alarmTitle').textContent = isAutoAlarm ? 'Alarm Aktif' : 'Nonaktifkan Mode Panic';
+  el('alarmMsg').textContent = isAutoAlarm
+    ? `${el('alarmDurationLabel').textContent} terlampaui tanpa konfirmasi aman. Masukkan passcode untuk menonaktifkan alarm.`
+    : 'Masukkan passcode untuk menghentikan mode panic dengan aman.';
   el('alarmOverlay').classList.add('show');
   el('alarmPasscodeInput').value = '';
   el('alarmPasscodeInput').focus();
@@ -796,11 +913,15 @@ el('submitPasscodeBtn').addEventListener('click', async () => {
   if(inputHash === passcodeHash){
     if(panicActive){
       deactivatePanic();
+    } else if(editUnlockMode){
+      editUnlockMode = false;
+      el('cancelEditBtn').classList.add('hidden');
+      el('alarmOverlay').classList.remove('show');
+      openEditPanels();
     } else {
-      // ini cuma test alarm dari halaman awal, panic belum pernah aktif
       stopAlarmSound();
       el('alarmOverlay').classList.remove('show');
-      showToast('✓ Test alarm selesai. Passcode benar.');
+      showToast('✓ Passcode terverifikasi.');
     }
   }else{
     wrongAttempts++;
@@ -817,6 +938,8 @@ function deactivatePanic(){
   if(repeatWaInterval) clearInterval(repeatWaInterval);
   stopAudioRecording();
   stopAlarmSound();
+  if(capturedPhotoUrl){ URL.revokeObjectURL(capturedPhotoUrl); capturedPhotoUrl = null; }
+  el('capturedPhotoBox').innerHTML = '';
 
   el('alarmOverlay').classList.remove('show');
   el('panicBtn').classList.remove('active');
@@ -825,6 +948,9 @@ function deactivatePanic(){
   el('mainSub').textContent = 'Mode panic dinonaktifkan. Tekan tombol lagi kapan pun dibutuhkan.';
   el('hintText').textContent = 'Siaga kembali';
   el('livePanel').classList.add('hidden');
+  el('diagnosticPanel').classList.remove('hidden');
+  el('editSetupBtn').style.opacity = '1';
+  el('editSetupBtn').style.pointerEvents = 'auto';
   el('gpsStatus').textContent = 'Siaga';
   wrongAttempts = 0;
 
