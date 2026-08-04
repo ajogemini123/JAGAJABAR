@@ -672,17 +672,37 @@ let capturedPhotoUrl = null;
 let capturedPhotoBlob = null;
 
 async function captureQuickPhoto(){
+  let stream;
   try{
-    const stream = await navigator.mediaDevices.getUserMedia({
+    stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' } } // kamera belakang
     });
+  }catch(e1){
+    // fallback: beberapa perangkat/browser menolak constraint 'ideal', coba tanpa facingMode spesifik
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      addLog('Kamera belakang tidak tersedia spesifik, memakai kamera default');
+    }catch(e2){
+      addLog('Foto kilat gagal: ' + (e2.name || 'error') + ' — ' + (e2.message || 'kamera tidak dapat diakses'));
+      return;
+    }
+  }
+
+  try{
     const video = document.createElement('video');
     video.srcObject = stream;
     video.setAttribute('playsinline', true);
+    video.muted = true;
     await video.play();
 
-    // beri jeda singkat supaya kamera sempat fokus/exposure menyesuaikan
-    await new Promise(r => setTimeout(r, 400));
+    // beri jeda supaya kamera sempat fokus/exposure menyesuaikan, dan videoWidth/Height terisi
+    await new Promise(r => setTimeout(r, 500));
+
+    if(video.videoWidth === 0 || video.videoHeight === 0){
+      addLog('Foto kilat gagal: kamera belum siap (dimensi video 0)');
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
@@ -692,17 +712,23 @@ async function captureQuickPhoto(){
     stream.getTracks().forEach(track => track.stop()); // matikan kamera segera setelah jepret
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if(!blob){
+      addLog('Foto kilat gagal: canvas tidak menghasilkan gambar');
+      return;
+    }
+
     if(capturedPhotoUrl) URL.revokeObjectURL(capturedPhotoUrl);
     capturedPhotoBlob = blob;
     capturedPhotoUrl = URL.createObjectURL(blob);
 
     renderCapturedPhoto();
-    addLog('Foto kilat berhasil diambil dari kamera belakang');
+    addLog(`Foto kilat berhasil diambil (${Math.round(blob.size/1024)} KB)`);
 
     // langsung tawarkan share sheet native (WhatsApp jadi salah satu opsi) begitu foto siap
     tryShareCapturedPhoto();
   }catch(e){
-    addLog('Foto kilat gagal: izin kamera ditolak/tidak tersedia');
+    addLog('Foto kilat gagal saat proses capture: ' + (e.name || '') + ' ' + (e.message || ''));
+    if(stream) stream.getTracks().forEach(track => track.stop());
   }
 }
 
