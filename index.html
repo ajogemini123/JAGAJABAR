@@ -189,6 +189,7 @@
     <div class="live-row"><span>Izin mikrofon</span><span id="diagMic">Mengecek…</span></div>
     <div class="live-row"><span>Izin kamera</span><span id="diagCamera">Mengecek…</span></div>
     <p class="note" id="diagAdvice"></p>
+    <button class="btn btn-outline" id="requestAllPermBtn" style="margin-top:10px;border-color:var(--gold);color:var(--gold);">Siapkan Semua Izin Sekarang</button>
   </div>
 
   <!-- SETUP PASSCODE -->
@@ -345,11 +346,67 @@ async function runDiagnostics(){
     adviceEl.innerHTML = '⚠ Halaman ini dibuka secara lokal (file), bukan lewat web asli. GPS, mikrofon, & kamera TIDAK AKAN BISA aktif sampai website ini di-hosting ke HTTPS (contoh: GitHub Pages). Semua fitur lain (WA/SMS/telepon) tetap bisa dites sekarang.';
     adviceEl.style.color = 'var(--red)';
   } else {
-    adviceEl.textContent = 'Koneksi aman. Izin GPS, mikrofon, & kamera akan diminta browser saat tombol PANIC pertama kali ditekan.';
+    adviceEl.textContent = 'Koneksi aman. Simpan passcode di bawah untuk memicu permintaan izin GPS, mikrofon, & kamera sekaligus — sehingga saat tombol PANIC ditekan, semua sudah siap dan tidak ada jeda izin.';
     adviceEl.style.color = 'var(--dim)';
   }
 }
 runDiagnostics();
+
+/* ================= MINTA SEMUA IZIN DI AWAL (GPS + MIC + KAMERA), SEKALI SAJA ================= */
+let gpsStandbyActive = false;
+
+async function requestAllPermissionsUpfront(){
+  // 1. GPS - minta lalu langsung mulai standby watchPosition supaya saat panic ditekan, titik sudah ada
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        lastCoords = {
+          lat: pos.coords.latitude.toFixed(6),
+          lng: pos.coords.longitude.toFixed(6),
+          acc: Math.round(pos.coords.accuracy)
+        };
+        startGpsStandby();
+        runDiagnostics();
+      },
+      () => { runDiagnostics(); },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }
+
+  // 2. Mikrofon - minta izin, langsung stop stream (izin tetap tersimpan browser, tidak boros baterai)
+  try{
+    const micTest = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micTest.getTracks().forEach(t => t.stop());
+  }catch(e){ /* izin ditolak, akan tercatat di diagnostik */ }
+
+  // 3. Kamera - sama, minta lalu stop
+  try{
+    const camTest = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+    camTest.getTracks().forEach(t => t.stop());
+  }catch(e){ /* izin ditolak, akan tercatat di diagnostik */ }
+
+  runDiagnostics();
+  showToast('✓ Semua izin siap. Panic button dapat langsung dieksekusi cepat.');
+}
+
+/* GPS standby - mengawasi lokasi terus sejak awal, bukan baru mulai saat panic ditekan */
+function startGpsStandby(){
+  if(gpsStandbyActive || !navigator.geolocation) return;
+  gpsStandbyActive = true;
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      lastCoords = {
+        lat: pos.coords.latitude.toFixed(6),
+        lng: pos.coords.longitude.toFixed(6),
+        acc: Math.round(pos.coords.accuracy)
+      };
+    },
+    () => { /* diam-diam gagal, tidak fatal untuk standby */ },
+    { enableHighAccuracy: true, maximumAge: 8000, timeout: 15000 }
+  );
+}
+
+el('requestAllPermBtn').addEventListener('click', requestAllPermissionsUpfront);
 
 /* ================= HASHING SEDERHANA (SHA-256 via SubtleCrypto) ================= */
 async function hashText(text){
@@ -369,7 +426,8 @@ el('savePasscodeBtn').addEventListener('click', async () => {
   el('passcodeConfirm').value = '';
   el('passcodePanel').classList.add('hidden');
   saveSetupToStorage();
-  showToast('✓ Passcode tersimpan permanen di perangkat ini. Jangan lupakan passcode ini.');
+  showToast('✓ Passcode tersimpan. Menyiapkan izin sistem…');
+  requestAllPermissionsUpfront();
 });
 
 /* ================= SETUP KONTAK ================= */
@@ -529,6 +587,7 @@ function loadSetupFromStorage(){
     }
     if(savedHash && getValidContacts().length > 0){
       el('hintText').textContent = 'Siap. Tekan tombol jika dalam bahaya';
+      startGpsStandby(); // sudah pernah setup, langsung standby tanpa perlu minta izin ulang
     } else {
       // belum pernah setup sama sekali -> buka otomatis supaya user tahu harus isi dulu
       openEditPanels();
@@ -569,56 +628,45 @@ function activatePanic(validContacts){
   el('editSetupBtn').style.pointerEvents = 'none';
   el('gpsStatus').textContent = 'Tracking';
 
-  addLog('Panic diaktifkan — mengirim secepat mungkin');
+  addLog('Panic diaktifkan');
 
+  // Getar HP + nada penanda singkat, memberi tahu user aksi sudah tereksekusi
+  triggerHapticAlert();
+
+  // Broadcast LANGSUNG SEKARANG dalam window tap yang sama (tidak nunggu GPS/izin apa pun,
+  // karena semua sudah disiapkan sejak setup awal) - inilah kunci semua kontak kebuka bersamaan
+  fireAllChannelsImmediately(validContacts);
+
+  // Kamera, mic, dan GPS presisi tinggi berkelanjutan - jalan paralel, tidak menahan broadcast
   captureQuickPhoto();
+  startAudioRecording();
+  startLocationTracking(validContacts);
   setTimeout(runDiagnostics, 1200);
 
-  // SATU alur: coba dapat GPS singkat dulu (maks 4 detik), lalu kirim SATU broadcast WA
-  // (bukan kirim 2x terpisah) supaya tidak membanjiri popup saat kontak banyak
-  sendSingleEmergencyBroadcast(validContacts);
-
-  startAudioRecording();
   startCountdown(validContacts);
   startRepeatWhatsApp(validContacts);
 }
 
-/* ================= KIRIM SATU BROADCAST DARURAT (TUNGGU GPS SINGKAT, LALU KIRIM SEKALI SAJA) ================= */
-function sendSingleEmergencyBroadcast(validContacts){
-  if(!navigator.geolocation){
-    addLog('Perangkat tidak mendukung GPS — mengirim tanpa koordinat');
-    fireAllChannelsImmediately(validContacts);
-    return;
-  }
-
-  el('liveCoords').textContent = 'Mencari sinyal GPS…';
-  el('hintText').textContent = 'Menunggu lokasi sebelum mengirim…';
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude.toFixed(6);
-      const lng = pos.coords.longitude.toFixed(6);
-      const acc = Math.round(pos.coords.accuracy);
-      lastCoords = { lat, lng, acc };
-      el('liveCoords').textContent = `${lat}, ${lng}`;
-      el('liveTime').textContent = new Date().toLocaleTimeString('id-ID');
-      el('hintText').textContent = 'Jangan tutup halaman ini';
-      addLog(`Koordinat didapat (±${acc}m) — mengirim broadcast dengan lokasi akurat`);
-
-      fireAllChannelsImmediately(validContacts);
-      startLocationTracking(validContacts);
-    },
-    (err) => {
-      // GPS benar-benar gagal (izin ditolak / tidak ada sinyal sama sekali) - baru kirim tanpa koordinat sebagai fallback terakhir
-      el('hintText').textContent = 'Jangan tutup halaman ini';
-      addLog('GPS gagal total: ' + (err.code === 1 ? 'izin ditolak' : (err.message || 'sinyal tidak ditemukan')) + ' — mengirim tanpa koordinat');
-      fireAllChannelsImmediately(validContacts);
-      startLocationTracking(validContacts);
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-  );
+/* Getar + nada pendek sebagai penanda ke user bahwa panic sudah tereksekusi */
+function triggerHapticAlert(){
+  try{
+    if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+  }catch(e){ /* vibration API tidak didukung, tidak fatal */ }
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.6);
+  }catch(e){ /* audio context gagal, tidak fatal */ }
 }
 
+/* ================= KIRIM SATU BROADCAST DARURAT (TUNGGU GPS SINGKAT, LALU KIRIM SEKALI SAJA) ================= */
 /* ================= FOTO KILAT OTOMATIS (KAMERA BELAKANG) ================= */
 let capturedPhotoUrl = null;
 let capturedPhotoBlob = null;
@@ -702,9 +750,11 @@ function fireAllChannelsImmediately(validContacts){
   let targets = [...validContacts];
   if(el('notifyPoliceCheck').checked) targets = targets.concat(POLICE_CONTACTS);
 
-  // Broadcast WA ke SEMUA kontak sekaligus, jeda singkat antar tab supaya tidak diblokir browser
-  targets.forEach((num, i) => {
-    setTimeout(() => window.open(`https://wa.me/${num}?text=${encoded}`, '_blank'), i * 350);
+  // PENTING: window.open() harus dipanggil LANGSUNG tanpa setTimeout, karena Safari iOS
+  // memblokir popup yang dipicu di luar user-gesture langsung (bahkan delay sekecil apapun
+  // membuatnya dianggap bukan aksi langsung dari tap pengguna, dan diblokir diam-diam).
+  targets.forEach((num) => {
+    window.open(`https://wa.me/${num}?text=${encoded}`, '_blank');
   });
 
   addLog(`Broadcast WhatsApp terkirim ke ${targets.length} nomor sekaligus`);
@@ -715,6 +765,15 @@ function fireAllChannelsImmediately(validContacts){
 /* ================= TRACKING LOKASI REALTIME (presisi tinggi, berkelanjutan) ================= */
 function startLocationTracking(validContacts){
   if(!navigator.geolocation){ showToast('Perangkat tidak mendukung GPS'); return; }
+
+  // hentikan watch standby lama (kalau ada) supaya tidak dobel GPS request berjalan bersamaan
+  if(watchId !== null){ navigator.geolocation.clearWatch(watchId); }
+
+  // tampilkan koordinat yang sudah ada dari standby, jika ada, segera
+  if(lastCoords){
+    el('liveCoords').textContent = `${lastCoords.lat}, ${lastCoords.lng}`;
+    el('liveTime').textContent = new Date().toLocaleTimeString('id-ID');
+  }
 
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
@@ -957,7 +1016,8 @@ el('submitPasscodeBtn').addEventListener('click', async () => {
 
 function deactivatePanic(){
   panicActive = false;
-  if(watchId) navigator.geolocation.clearWatch(watchId);
+  if(watchId){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+  gpsStandbyActive = false;
   if(countdownInterval) clearInterval(countdownInterval);
   if(repeatWaInterval) clearInterval(repeatWaInterval);
   stopAudioRecording();
@@ -980,6 +1040,8 @@ function deactivatePanic(){
 
   addLog('Panic dinonaktifkan dengan passcode benar');
   showToast('✓ Panic mode dimatikan. Semoga kamu aman.');
+
+  startGpsStandby(); // aktifkan lagi standby supaya siap untuk aktivasi panic berikutnya
 }
 </script>
 
