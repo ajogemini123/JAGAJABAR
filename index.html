@@ -160,6 +160,7 @@
     <div class="live-coords" id="liveCoords">Mencari GPS…</div>
     <div class="live-row" style="margin-top:8px"><span><span class="rec-dot"></span>REKAM AUDIO</span><span id="recStatus">Aktif</span></div>
     <div id="capturedPhotoBox"></div>
+    <div id="recordingsList" style="margin-top:8px;"></div>
     <div class="timer-big" id="countdownTimer">30:00</div>
     <div class="live-row"><span>UPDATE KE-</span><span id="pingCount">0</span></div>
     <div class="log-list" id="activityLog"></div>
@@ -189,7 +190,7 @@
     <div class="live-row"><span>Izin mikrofon</span><span id="diagMic">Mengecek…</span></div>
     <div class="live-row"><span>Izin kamera</span><span id="diagCamera">Mengecek…</span></div>
     <p class="note" id="diagAdvice"></p>
-    <button class="btn btn-outline" id="requestAllPermBtn" style="margin-top:10px;border-color:var(--gold);color:var(--gold);">Siapkan Semua Izin Sekarang</button>
+    <button class="btn btn-outline" id="requestAllPermBtn" style="margin-top:10px;border-color:var(--gold);color:var(--gold);">Siapkan Izin Lokasi Sekarang</button>
   </div>
 
   <!-- SETUP PASSCODE -->
@@ -346,7 +347,7 @@ async function runDiagnostics(){
     adviceEl.innerHTML = '⚠ Halaman ini dibuka secara lokal (file), bukan lewat web asli. GPS, mikrofon, & kamera TIDAK AKAN BISA aktif sampai website ini di-hosting ke HTTPS (contoh: GitHub Pages). Semua fitur lain (WA/SMS/telepon) tetap bisa dites sekarang.';
     adviceEl.style.color = 'var(--red)';
   } else {
-    adviceEl.textContent = 'Koneksi aman. Simpan passcode di bawah untuk memicu permintaan izin GPS, mikrofon, & kamera sekaligus — sehingga saat tombol PANIC ditekan, semua sudah siap dan tidak ada jeda izin.';
+    adviceEl.textContent = 'Koneksi aman. Simpan passcode di bawah untuk mengaktifkan lokasi siaga (GPS berjalan sejak awal). Izin mikrofon & kamera akan diminta browser saat tombol PANIC pertama kali ditekan.';
     adviceEl.style.color = 'var(--dim)';
   }
 }
@@ -356,7 +357,10 @@ runDiagnostics();
 let gpsStandbyActive = false;
 
 async function requestAllPermissionsUpfront(){
-  // 1. GPS - minta lalu langsung mulai standby watchPosition supaya saat panic ditekan, titik sudah ada
+  // GPS - minta lalu langsung mulai standby watchPosition supaya saat panic ditekan, titik sudah ada.
+  // Mic dan kamera SENGAJA TIDAK di-pre-warm di sini: stream media (beda dari GPS) rawan tersangkut
+  // statenya di iOS kalau diminta lalu di-stop lebih dulu, sehingga permintaan berikutnya bisa gagal.
+  // Keduanya akan diminta fresh saat panic benar-benar ditekan.
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -372,18 +376,6 @@ async function requestAllPermissionsUpfront(){
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   }
-
-  // 2. Mikrofon - minta izin, langsung stop stream (izin tetap tersimpan browser, tidak boros baterai)
-  try{
-    const micTest = await navigator.mediaDevices.getUserMedia({ audio: true });
-    micTest.getTracks().forEach(t => t.stop());
-  }catch(e){ /* izin ditolak, akan tercatat di diagnostik */ }
-
-  // 3. Kamera - sama, minta lalu stop
-  try{
-    const camTest = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-    camTest.getTracks().forEach(t => t.stop());
-  }catch(e){ /* izin ditolak, akan tercatat di diagnostik */ }
 
   runDiagnostics();
   showToast('✓ Semua izin siap. Panic button dapat langsung dieksekusi cepat.');
@@ -882,18 +874,57 @@ function stopAudioRecording(){
   el('recStatus').textContent = 'Nonaktif';
 }
 
+let savedRecordings = []; // { url, blob, time, sizeKB }
+
 async function saveRecordingLocally(blob){
   try{
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result;
-      const key = `jagajabar-audio-${sessionStartId}-${Date.now()}`;
-      // simpan hanya metadata + catatan, blob besar tidak cocok disimpan penuh di key-value store
-      await window.storage.set(key, JSON.stringify({ time: new Date().toISOString(), sizeKB: Math.round(blob.size/1024) }));
-    };
-    reader.readAsDataURL(blob);
-    addLog(`Segmen rekaman tersimpan (${Math.round(blob.size/1024)} KB)`);
-  }catch(e){ /* optional */ }
+    const url = URL.createObjectURL(blob);
+    const time = new Date().toLocaleTimeString('id-ID');
+    const sizeKB = Math.round(blob.size/1024);
+    savedRecordings.push({ url, blob, time, sizeKB });
+
+    // catat metadata ringkas ke storage sebagai jejak riwayat (opsional, tidak fatal jika gagal)
+    const key = `jagajabar-audio-${sessionStartId}-${Date.now()}`;
+    window.storage.set(key, JSON.stringify({ time: new Date().toISOString(), sizeKB })).catch(()=>{});
+
+    addLog(`Segmen rekaman audio tersimpan (${sizeKB} KB)`);
+    renderRecordingsList();
+  }catch(e){ addLog('Gagal menyimpan segmen rekaman'); }
+}
+
+function renderRecordingsList(){
+  const container = el('recordingsList');
+  if(!container || savedRecordings.length === 0) return;
+  container.innerHTML = savedRecordings.map((rec, i) => `
+    <div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);">
+      <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--dim);">🎙 Segmen ${i+1} · ${rec.time} · ${rec.sizeKB}KB</span>
+      <button class="icon-btn" data-share-audio="${i}" style="font-size:14px;">📤</button>
+      <a href="${rec.url}" download="jagajabar-audio-${i+1}.webm" class="icon-btn" style="font-size:14px;display:flex;align-items:center;justify-content:center;text-decoration:none;">⬇</a>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('[data-share-audio]').forEach(btn => {
+    btn.addEventListener('click', () => shareAudioSegment(+btn.dataset.shareAudio));
+  });
+}
+
+async function shareAudioSegment(idx){
+  const rec = savedRecordings[idx];
+  if(!rec) return;
+  if(!navigator.share || !navigator.canShare){
+    showToast('Share otomatis tidak didukung, gunakan tombol unduh');
+    return;
+  }
+  try{
+    const file = new File([rec.blob], `jagajabar-audio-${idx+1}.webm`, { type: rec.blob.type || 'audio/webm' });
+    if(navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: 'Rekaman Audio JAGAJABAR' });
+    } else {
+      showToast('Format audio ini tidak bisa dibagikan langsung, gunakan tombol unduh');
+    }
+  }catch(e){
+    addLog('Share audio dibatalkan atau gagal');
+  }
 }
 
 /* ================= SMS & TELEPON OTOMATIS ================= */
@@ -1049,6 +1080,9 @@ function deactivatePanic(){
   stopAudioRecording();
   stopAlarmSound();
   if(capturedPhotoUrl){ URL.revokeObjectURL(capturedPhotoUrl); capturedPhotoUrl = null; }
+  savedRecordings.forEach(rec => URL.revokeObjectURL(rec.url));
+  savedRecordings = [];
+  el('recordingsList').innerHTML = '';
   el('capturedPhotoBox').innerHTML = '';
 
   el('alarmOverlay').classList.remove('show');
